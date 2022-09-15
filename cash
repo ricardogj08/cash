@@ -1,0 +1,100 @@
+#!/bin/sh
+#
+# cash - A dialog curses cash register written in POSIX sh.
+#
+# Copyright (C) 2022 - Ricardo García Jiménez <ricardogj08@riseup.net>
+#
+
+####################################################
+# Imprime un mensaje de error y termina el script.
+# Arguments:
+#   El cuerpo del mensaje.
+# Outputs:
+#   Escribe el error en stderr.
+# Returns:
+#   1
+####################################################
+err() {
+    printf '%s.\n' "$1" >&2
+    exit 1
+}
+
+########################################################
+# Escapa todos los caracteres especiales de un string.
+# Arguments:
+#   El string que va ser escapado.
+# Outputs:
+#   Escribe el string escapado en stdout.
+########################################################
+esc() {
+	sed 's/[^[:alnum:] ]/\\&/g' <<-EOF
+		$1
+	EOF
+}
+
+####################################
+# Ejecuta una sentecia SQL.
+# Globals:
+#   CASH_DB
+# Arguments:
+#   El cuerpo de la sentencia SQL.
+####################################
+query() {
+	"$mysql" "${CASH_DB:-cash}" <<-EOF
+		$1
+	EOF
+}
+
+###############################################
+# Define el tamaño de los cuadros de diálogo.
+# Arguments:
+#   Ninguno
+###############################################
+term_size() {
+    set -f
+
+    # shellcheck disable=SC2046
+    set +f -- $(stty size)
+
+    LINES=$(($1 - 32))
+
+    COLUMNS=$(($2 - 32))
+}
+
+#################################################
+# Crea un hash de contraseña.
+# Arguments:
+#   La contraseña del usuario.
+# Outputs:
+#   Escribe el hash de la contraseña en stdout.
+#################################################
+password_hash() {
+    hash=$(
+	sha512sum <<-EOF
+		$1
+	EOF
+    )
+
+    printf '%s\n' "${hash%% *}"
+
+    unset hash
+}
+
+main() {
+    command -v dialog >/dev/null 2>&1 ||
+        err "dialog not found"
+
+    mysql=$(
+        command -v myslq ||
+        command -v mariadb
+    ) || err "MySQL/MariaDB not found"
+
+    command -v sha512sum >/dev/null 2>&1 ||
+        err "sha512sum not found"
+
+    term_size
+
+    trap 'term_size' WINCH
+}
+
+main "$@"
