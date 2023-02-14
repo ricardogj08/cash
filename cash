@@ -80,6 +80,16 @@ password_hash() {
     unset hash
 }
 
+login() {
+    dialog \
+        --backtitle "${CASH_TITLE}" \
+        --title "Iniciar sesión" \
+        --insecure \
+        --mixedform "Escribe tus credenciales de acceso:" 0 0 0 \
+            "email:"       1 1 "" 2 1 40 256 0 \
+            "contraseña:"  3 1 "" 4 1 40  64 1
+}
+
 main() {
     command -v dialog >/dev/null 2>&1 ||
         err "dialog not found"
@@ -95,6 +105,12 @@ main() {
     term_size
 
     trap 'term_size' WINCH
+
+    : "${CASH_TITLE:=cash}"
+
+    CASH_SESSION=0
+
+    login
 }
 
 main "$@"
